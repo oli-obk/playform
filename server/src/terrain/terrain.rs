@@ -1,14 +1,18 @@
+use capnp::{MessageBuilder, MessageReader, ReaderOptions, MallocMessageBuilder};
+use noise::Seed;
+use std::collections::hash_map::{HashMap, Entry};
+use std::iter::range_inclusive;
+use std::io::Cursor;
+use std::sync::Mutex;
+
 use common::block_position::BlockPosition;
+use common::communicate::terrain_block;
 use common::entity::EntityId;
 use common::id_allocator::IdAllocator;
 use common::lod::LODIndex;
 use common::stopwatch::TimerSet;
-use common::terrain_block::TerrainBlock;
-use noise::Seed;
+
 use opencl_context::CL;
-use std::collections::hash_map::{HashMap, Entry};
-use std::iter::range_inclusive;
-use std::sync::Mutex;
 use terrain::heightmap::HeightMap;
 use terrain::terrain_gen;
 use terrain::texture_generator::TerrainTextureGenerator;
@@ -30,7 +34,7 @@ pub enum TerrainType {
 }
 
 pub struct TerrainMipMesh {
-  pub lods: Vec<Option<TerrainBlock>>,
+  pub lods: Vec<Option<MallocMessageBuilder>>,
 }
 
 /// This struct contains and lazily generates the world's terrain.
@@ -62,7 +66,7 @@ impl Terrain {
     lod_index: LODIndex,
     f: F,
   ) -> T
-    where F: FnOnce(&TerrainBlock) -> T
+    where F: FnOnce(terrain_block::Reader) -> T
   {
     let heightmap = &self.heightmap;
     let treemap = &self.treemap;
@@ -88,7 +92,9 @@ impl Terrain {
           );
         }
 
-        f(mesh.as_ref().unwrap())
+        let mesh = mesh.as_ref().unwrap();
+        let mesh = mesh.get_root::<terrain_block::Builder>().as_reader();
+        f(mesh)
       })
     );
 

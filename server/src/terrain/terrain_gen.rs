@@ -1,14 +1,20 @@
+use capnp::{MessageBuilder, MessageReader, ReaderOptions, MallocMessageBuilder};
+use cgmath::{Point, Point2, Point3, Vector, Vector2, Vector3};
+use cgmath::Aabb3;
+use std::cmp::partial_max;
+use std::num;
+use std::sync::Mutex;
+
 use common::block_position::BlockPosition;
+use common::color::Color3;
+use common::communicate::{aabb3, bound_pair, color3, entity_id, pixel_coords, vector3, terrain_block};
 use common::entity::EntityId;
 use common::id_allocator::IdAllocator;
 use common::lod::LODIndex;
 use common::stopwatch::TimerSet;
-use common::terrain_block::{TerrainBlock, BLOCK_WIDTH, LOD_QUALITY, TEXTURE_WIDTH, tri};
-use cgmath::{Point, Point2, Point3, Vector, Vector2, Vector3};
-use cgmath::Aabb3;
+use common::terrain_block::{BLOCK_WIDTH, LOD_QUALITY, TEXTURE_WIDTH};
+
 use opencl_context::CL;
-use std::cmp::partial_max;
-use std::sync::Mutex;
 use terrain::heightmap::HeightMap;
 use terrain::texture_generator::TerrainTextureGenerator;
 use terrain::tree_placer::TreePlacer;
@@ -22,9 +28,14 @@ pub fn generate_block(
   treemap: &TreePlacer,
   position: &BlockPosition,
   lod_index: LODIndex,
-) -> TerrainBlock {
+) -> MallocMessageBuilder {
   timers.time("update.generate_block", || {
-    let mut block = TerrainBlock::empty();
+    let mut vertex_positions: Vec<Point3<f32>> = Vec::new();
+    let mut vertex_normals: Vec<Vector3<f32>> = Vec::new();
+    let mut pixel_coords: Vec<Point2<f32>> = Vec::new();
+    let mut triangle_ids: Vec<EntityId> = Vec::new();
+    let mut bounds: Vec<(EntityId, Aabb3<f32>)> = Vec::new();
+    let mut pixels: Vec<Color3<f32>> = Vec::new();
 
     let position = position.to_world_position();
 
@@ -45,7 +56,11 @@ pub fn generate_block(
           heightmap,
           treemap,
           id_allocator,
-          &mut block,
+          &mut vertex_positions,
+          &mut vertex_normals,
+          &mut pixel_coords,
+          &mut triangle_ids,
+          &mut bounds,
           sample_width,
           tex_sample,
           &tile_position,
@@ -58,7 +73,7 @@ pub fn generate_block(
     }
 
     if any_tiles {
-      block.pixels =
+      pixels =
         texture_generator.generate(
           cl,
           position.x as f32,
@@ -66,7 +81,53 @@ pub fn generate_block(
         );
     }
 
-    block
+    let vertex_positions_len = num::cast(vertex_positions.len()).unwrap();
+    let vertex_normals_len = num::cast(vertex_normals.len()).unwrap();
+    let pixel_coords_len = num::cast(pixel_coords.len()).unwrap();
+    let triangle_ids_len = num::cast(triangle_ids.len()).unwrap();
+    let bounds_len = num::cast(bounds.len()).unwrap();
+    let pixels_len = num::cast(pixels.len()).unwrap();
+
+    let mut vertex_positions = vertex_positions.into_iter();
+    let mut vertex_normals = vertex_normals.into_iter();
+    let mut pixel_coords = pixel_coords.into_iter();
+    let mut triangle_ids = triangle_ids.into_iter();
+    let mut bounds = bounds.into_iter();
+    let mut pixels = pixels.into_iter();
+
+    capnpc_new!(
+      terrain_block::Builder =>
+      [from_fn init_vertex_positions vertex_positions_len => |mut dest: vector3::Builder| {
+        let p: Point3<f32> = vertex_positions.next().unwrap();
+        capnpc_init!(dest => [set_x p.x] [set_y p.y] [set_z p.z]);
+      }]
+      [from_fn init_vertex_normals vertex_normals_len => |mut dest: vector3::Builder| {
+        let p: Vector3<f32> = vertex_normals.next().unwrap();
+        capnpc_init!(dest => [set_x p.x] [set_y p.y] [set_z p.z]);
+      }]
+      [from_fn init_pixel_coords pixel_coords_len => |mut dest: pixel_coords::Builder| {
+        let p: Point2<f32> = pixel_coords.next().unwrap();
+        capnpc_init!(dest => [set_x p.x] [set_y p.y]);
+      }]
+      [from_fn init_triangle_ids triangle_ids_len => |mut dest: entity_id::Builder| {
+        let id: EntityId = triangle_ids.next().unwrap();
+        capnpc_init!(dest => [set_id id.0]);
+      }]
+      [from_fn init_bounds bounds_len => |mut dest: bound_pair::Builder| {
+        let (id, b): (EntityId, Aabb3<f32>) = bounds.next().unwrap();
+        capnpc_init!(dest =>
+          [init_id => [set_id id.0]]
+          [init_bounds =>
+            [init_min => [set_x b.min.x] [set_y b.min.y] [set_z b.min.z]]
+            [init_max => [set_x b.max.x] [set_y b.max.y] [set_z b.max.z]]
+          ]
+        );
+      }]
+      [from_fn init_pixels pixels_len => |mut dest: color3::Builder| {
+        let c: Color3<f32> = pixels.next().unwrap();
+        capnpc_init!(dest => [set_r c.r] [set_g c.g] [set_b c.b]);
+      }]
+    )
   })
 }
 
@@ -75,7 +136,11 @@ fn add_tile<'a>(
   hm: &HeightMap,
   treemap: &TreePlacer,
   id_allocator: &Mutex<IdAllocator<EntityId>>,
-  block: &mut TerrainBlock,
+  vertex_positions: &mut Vec<Point3<f32>>,
+  vertex_normals: &mut Vec<Vector3<f32>>,
+  pixel_coords: &mut Vec<Point2<f32>>,
+  triangle_ids: &mut Vec<EntityId>,
+  bounds: &mut Vec<(EntityId, Aabb3<f32>)>,
   sample_width: f32,
   tex_sample: f32,
   position: &Point3<f32>,
@@ -141,11 +206,11 @@ fn add_tile<'a>(
 
         let id = id_allocator.lock().unwrap().allocate();
 
-        block.vertex_coordinates.push(tri(*v1, *v2, center));
-        block.normals.push(tri(*n1, *n2, center_normal));
-        block.coords.push(tri(*t1, *t2, center_tex_coord));
-        block.ids.push(id);
-        block.bounds.push((
+        vertex_positions.push_all(&[*v1, *v2, center]);
+        vertex_normals.push_all(&[*n1, *n2, center_normal]);
+        pixel_coords.push_all(&[*t1, *t2, center_tex_coord]);
+        triangle_ids.push(id);
+        bounds.push((
           id,
           Aabb3::new(
             Point3::new($minx, v1.y, $minz),
@@ -157,11 +222,6 @@ fn add_tile<'a>(
 
     let polys =
       (LOD_QUALITY[lod_index.0 as usize] * LOD_QUALITY[lod_index.0 as usize] * 4) as usize;
-    block.vertex_coordinates.reserve(polys);
-    block.normals.reserve(polys);
-    block.coords.reserve(polys);
-    block.ids.reserve(polys);
-    block.bounds.reserve(polys);
 
     let centr = center; // makes alignment nice
     place_terrain!(0, 1, ps[0].x, ps[0].z, centr.x, ps[1].z);
@@ -170,7 +230,16 @@ fn add_tile<'a>(
     place_terrain!(3, 0, ps[0].x, ps[0].z, ps[3].x, centr.z);
 
     if treemap.should_place_tree(&centr) {
-      treemap.place_tree(centr, id_allocator, block, lod_index);
+      treemap.place_tree(
+        centr,
+        id_allocator,
+        vertex_positions,
+        vertex_normals,
+        pixel_coords,
+        triangle_ids,
+        bounds,
+        lod_index,
+      );
     }
 
     true

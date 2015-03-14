@@ -1,8 +1,9 @@
 /// Creator of the earth.
 
+use capnp::{MessageBuilder, MessageReader, ReaderOptions, MallocMessageBuilder};
 use std::ops::DerefMut;
 
-use common::communicate::{ClientId, ServerToClient, TerrainBlockSend};
+use common::communicate::{ClientId, client_id, server_to_client, terrain_block_send};
 use common::lod::{LODIndex, OwnerId};
 use common::stopwatch::TimerSet;
 use common::block_position::BlockPosition;
@@ -54,7 +55,7 @@ pub fn update_gaia(
                 // Maybe this should just ping the original thread, same as we ping the client.
                 TerrainGameLoader::insert_block(
                   timers,
-                  block,
+                  &block,
                   &position,
                   lod,
                   owner,
@@ -66,13 +67,18 @@ pub fn update_gaia(
               LoadReason::ForClient(id) => {
                 let clients = server.clients.lock().unwrap();
                 let client = clients.get(&id).unwrap();
-                client.sender.send(Some(
-                  ServerToClient::AddBlock(TerrainBlockSend {
-                    position: position,
-                    block: block.clone(),
-                    lod: lod,
-                  })
-                )).unwrap();
+                let message =
+                  capnpc_new!(
+                    terrain_block_send::Builder =>
+                    [init_position =>
+                      [set_x position.as_pnt().x]
+                      [set_y position.as_pnt().y]
+                      [set_z position.as_pnt().z]
+                    ]
+                    [set_block block]
+                    [set_lod lod.0]
+                  );
+                client.sender.send(Some(message)).unwrap();
               },
             }
           },

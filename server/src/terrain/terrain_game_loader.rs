@@ -1,13 +1,17 @@
+use capnp::MessageBuilder;
+use cgmath::{Aabb3, Point3};
+use noise::Seed;
+use std::sync::Mutex;
+
 use common::block_position::BlockPosition;
+use common::communicate::{terrain_block, terrain_block_send};
 use common::entity::EntityId;
 use common::id_allocator::IdAllocator;
 use common::lod::{LOD, LODIndex, OwnerId, LODMap};
 use common::stopwatch::TimerSet;
-use common::terrain_block::TerrainBlock;
+
 use in_progress_terrain::InProgressTerrain;
-use noise::Seed;
 use physics::Physics;
-use std::sync::Mutex;
 use terrain::terrain::Terrain;
 use update_gaia::{ServerToGaia, LoadReason};
 
@@ -99,9 +103,11 @@ impl TerrainGameLoader {
                 );
               },
               Some(block) => {
+                let block = block.get_root::<terrain_block_send::Builder>().as_reader();
+                let block = block.get_block();
                 TerrainGameLoader::insert_block(
                   timers,
-                  block,
+                  &block,
                   block_position,
                   new_lod,
                   owner,
@@ -119,7 +125,7 @@ impl TerrainGameLoader {
 
   pub fn insert_block(
     timers: &TimerSet,
-    block: &TerrainBlock,
+    block: &terrain_block::Reader,
     position: &BlockPosition,
     lod: LODIndex,
     owner: OwnerId,
@@ -145,8 +151,8 @@ impl TerrainGameLoader {
         LOD::LodIndex(_) => {
           timers.time("terrain_game_loader.load.unload", || {
             let mut physics = physics.lock().unwrap();
-            for id in block.ids.iter() {
-              physics.remove_terrain(*id);
+            for id in block.get_triangle_ids().iter() {
+              physics.remove_terrain(EntityId(id.get_id()));
             }
           });
         },
@@ -155,8 +161,15 @@ impl TerrainGameLoader {
 
     timers.time("terrain_game_loader.load.physics", || {
       let mut physics = physics.lock().unwrap();
-      for &(ref id, ref bounds) in block.bounds.iter() {
-        physics.insert_terrain(*id, bounds.clone());
+      for bound_pair in block.get_bounds().iter() {
+        let id = bound_pair.get_id().get_id();
+        let bounds = bound_pair.get_bounds();
+        let bounds =
+          Aabb3 {
+            min: Point3::new(bounds.get_min().get_x(), bounds.get_min().get_y(), bounds.get_min().get_z()),
+            max: Point3::new(bounds.get_max().get_x(), bounds.get_max().get_y(), bounds.get_max().get_z()),
+          };
+        physics.insert_terrain(EntityId(id), bounds);
       }
     });
   }
@@ -193,9 +206,11 @@ impl TerrainGameLoader {
               Some(block) => {
                 match block.lods.get(loaded_lod.0 as usize) {
                   Some(&Some(ref block)) => {
+                    let block = block.get_root::<terrain_block_send::Builder>().as_reader();
+                    let block = block.get_block();
                     let mut physics = physics.lock().unwrap();
-                    for id in block.ids.iter() {
-                      physics.remove_terrain(*id);
+                    for id in block.get_triangle_ids().iter() {
+                      physics.remove_terrain(EntityId(id.get_id()));
                     }
                   },
                   _ => {

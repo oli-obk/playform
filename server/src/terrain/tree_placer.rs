@@ -1,17 +1,18 @@
 // Thanks to http://procworld.blogspot.com/2011/02/space-colonization.html
 // for the basic idea used to generate these trees!
 
-use common::entity::EntityId;
-use common::id_allocator::IdAllocator;
-use common::lod::LODIndex;
-use common::terrain_block::{TerrainBlock, BLOCK_WIDTH, LOD_QUALITY, tri};
-use cgmath::{Point, Point2, Point3, EuclideanVector, Vector, Vector3};
+use cgmath::{Point, Point2, Point3, EuclideanVector, Vector, Vector2, Vector3};
 use cgmath::Aabb3;
 use rand::{Rng, SeedableRng, IsaacRng};
 use std::cmp::{partial_min, partial_max};
 use std::collections::VecDeque;
 use std::num::Float;
 use std::sync::Mutex;
+
+use common::entity::EntityId;
+use common::id_allocator::IdAllocator;
+use common::lod::LODIndex;
+use common::terrain_block::{BLOCK_WIDTH, LOD_QUALITY};
 
 const TREE_NODES: [f32; 4] = [1.0/16.0, 1.0/16.0, 1.0/64.0, 1.0/128.0];
 const MAX_BRANCH_LENGTH: [f32; 4] = [4.0, 4.0, 8.0, 16.0];
@@ -59,7 +60,11 @@ impl TreePlacer {
     &self,
     mut center: Point3<f32>,
     id_allocator: &Mutex<IdAllocator<EntityId>>,
-    block: &mut TerrainBlock,
+    vertex_positions: &mut Vec<Point3<f32>>,
+    vertex_normals: &mut Vec<Vector3<f32>>,
+    pixel_coords: &mut Vec<Point2<f32>>,
+    triangle_ids: &mut Vec<EntityId>,
+    block_bounds: &mut Vec<(EntityId, Aabb3<f32>)>,
     lod_index: LODIndex,
   ) {
     let lod_index = lod_index.0 as usize;
@@ -95,9 +100,9 @@ impl TreePlacer {
         let v3 = corners[idx3];
         let v4 = corners[idx4];
 
-        block.vertex_coordinates.push_all(&[tri(v1, v2, v4), tri(v1, v4, v3)]);
-        block.normals.push_all(&[tri(n1, n2, n4), tri(n1, n4, n3)]);
-        block.coords.push_all(&[tri(coords, coords, coords), tri(coords, coords, coords)]);
+        vertex_positions.push_all(&[v1, v2, v4, v1, v4, v3]);
+        vertex_normals.push_all(&[n1, n2, n4, n1, n4, n3]);
+        pixel_coords.push_all(&[coords, coords, coords, coords, coords, coords]);
 
         let minx = partial_min(v1.x, v2.x).unwrap();
         let maxx = partial_max(v1.x, v2.x).unwrap();
@@ -112,10 +117,10 @@ impl TreePlacer {
 
         let id1 = id_allocator.lock().unwrap().allocate();
         let id2 = id_allocator.lock().unwrap().allocate();
-        block.ids.push_all(&[id1, id2]);
+        triangle_ids.push_all(&[id1, id2]);
 
-        block.bounds.push((id1, bounds.clone()));
-        block.bounds.push((id2, bounds));
+        block_bounds.push((id1, bounds.clone()));
+        block_bounds.push((id2, bounds));
       };
 
     let mut place_block = |

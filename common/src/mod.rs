@@ -19,8 +19,7 @@ extern crate "rustc-serialize" as rustc_serialize;
 extern crate test;
 extern crate time;
 
-#[macro_use]
-extern crate "serialize" as _serialize;
+extern crate communicate_capnp;
 
 pub mod block_position;
 pub mod color;
@@ -37,5 +36,3 @@ pub mod stopwatch;
 pub mod surroundings_iter;
 pub mod surroundings_loader;
 pub mod terrain_block;
-
-pub use _serialize as serialize;

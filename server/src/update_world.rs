@@ -1,9 +1,12 @@
+use capnp::{MessageBuilder, MessageReader, ReaderOptions, MallocMessageBuilder};
+use capnpc_macros;
 use cgmath::{Point, Vector, Vector3};
 use std::ops::Neg;
 use std::sync::mpsc::Sender;
 
 use common::block_position::BlockPosition;
-use common::communicate::ServerToClient::*;
+use common::communicate::server_to_client;
+use common::communicate::server_to_client::*;
 use common::lod::{LOD, OwnerId};
 use common::stopwatch::TimerSet;
 use common::surroundings_loader::LODChange;
@@ -31,7 +34,26 @@ pub fn update_world(
       for (_, client) in server.clients.lock().unwrap().iter() {
         for &id in players.iter() {
           let bounds = server.physics.lock().unwrap().get_bounds(id).unwrap().clone();
-          client.sender.send(Some(UpdatePlayer(id, bounds))).unwrap();
+          let message =
+            capnpc_new!(
+              server_to_client::Builder =>
+              [init_update_player =>
+                [init_entity => [set_id id.0]]
+                [init_bounds =>
+                  [init_min =>
+                    [set_x bounds.min.x]
+                    [set_y bounds.min.y]
+                    [set_z bounds.min.z]
+                  ]
+                  [init_max =>
+                    [set_x bounds.max.x]
+                    [set_y bounds.max.y]
+                    [set_z bounds.max.z]
+                  ]
+                ]
+              ]
+            );
+          client.sender.send(Some(message)).unwrap();
         }
       }
     });
@@ -76,7 +98,8 @@ pub fn update_world(
 
     server.sun.lock().unwrap().update().map(|fraction| {
       for client in server.clients.lock().unwrap().values() {
-        client.sender.send(Some(UpdateSun(fraction))).unwrap();
+        let message = capnpc_new!(server_to_client::Builder => [set_update_sun fraction]);
+        client.sender.send(Some(message)).unwrap();
       }
     });
   });
@@ -101,7 +124,27 @@ fn translate_mob(
   mob.position.add_self_v(delta_p);
 
   for client in server.clients.lock().unwrap().values() {
-    client.sender.send(Some(UpdateMob(mob.entity_id, bounds.clone()))).unwrap();
+    let message =
+      capnpc_new!( 
+        server_to_client::Builder =>
+        [init_update_mob =>
+          [init_entity => [set_id mob.entity_id.0]]
+          [init_bounds =>
+            [init_min =>
+              [set_x bounds.min.x]
+              [set_y bounds.min.y]
+              [set_z bounds.min.z]
+            ]
+            [init_max =>
+              [set_x bounds.max.x]
+              [set_y bounds.max.y]
+              [set_z bounds.max.z]
+            ]
+          ]
+        ]
+      );
+
+    client.sender.send(Some(message)).unwrap();
   }
 }
 

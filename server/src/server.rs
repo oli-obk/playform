@@ -1,3 +1,4 @@
+use capnp::MallocMessageBuilder;
 use cgmath::{Aabb3, Point3};
 use std::collections::HashMap;
 use std::sync::Mutex;
@@ -5,7 +6,7 @@ use std::sync::mpsc::Sender;
 use std::thread::JoinGuard;
 use time;
 
-use common::communicate::{ServerToClient, ClientId};
+use common::communicate::{server_to_client, ClientId};
 use common::entity::EntityId;
 use common::id_allocator::IdAllocator;
 use common::interval_timer::IntervalTimer;
@@ -23,7 +24,7 @@ const UPDATES_PER_SECOND: u64 = 30;
 const SUN_TICK_NS: u64 = 5000000;
 
 pub struct Client {
-  pub sender: Sender<Option<ServerToClient>>,
+  pub sender: Sender<Option<MallocMessageBuilder>>,
   pub thread: JoinGuard<'static, ()>,
 }
 

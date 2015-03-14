@@ -1,11 +1,14 @@
+use capnp;
+use capnp::{MessageBuilder, MessageReader, ReaderOptions, MallocMessageBuilder};
 use env_logger;
 use std::env;
+use std::io::Cursor;
 use std::sync::mpsc::{channel, Receiver, TryRecvError};
 use std::sync::Mutex;
 use std::thread;
 use time;
 
-use common::serialize as binary;
+use common::communicate::client_to_server;
 use common::socket::ReceiveSocket;
 use common::stopwatch::TimerSet;
 use common::terrain_block::{BLOCK_WIDTH, TEXTURE_WIDTH};
@@ -140,8 +143,14 @@ fn main() {
         {
           listen_thread_recv.lock().unwrap().try_recv_opt()
             .map_to_bool(|up| {
-              let up = binary::decode(up.as_slice()).unwrap();
-              apply_client_update(server, &mut |block| { gaia_thread_send.send(block).unwrap() }, up)
+              let message_reader = Cursor::new(up);
+              let message_reader =
+                capnp::serialize::new_reader(
+                  &mut capnp::io::ReadInputStream::new(message_reader),
+                  ReaderOptions::new(),
+                ).unwrap();
+              let message_reader = message_reader.get_root::<client_to_server::Reader>();
+              apply_client_update(server, &mut |block| { gaia_thread_send.send(block).unwrap() }, message_reader)
             })
         },
         {

@@ -38,6 +38,7 @@ name = "server"
 path = "./src/mod.rs"
 
 [dependencies]
+capnp = "*"
 env_logger= "*"
 log = "*"
 rand = "*"
@@ -59,3 +60,6 @@ git = "https://github.com/bfops/rust-opencl"
 
 [dependencies.nanomsg]
 git = "https://github.com/thehydroimpulse/nanomsg.rs"
+
+[dependencies.capnpc-macros]
+git = "https://github.com/bfops/capnpc-macros"

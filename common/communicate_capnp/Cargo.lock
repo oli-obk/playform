@@ -1,0 +1,21 @@
+[root]
+name = "communicate_capnp"
+version = "0.0.0"
+dependencies = [
+ "capnp 0.1.22 (registry+https://github.com/rust-lang/crates.io-index)",
+ "capnpc 0.1.21 (git+https://github.com/dwrensha/capnpc-rust)",
+]
+
+[[package]]
+name = "capnp"
+version = "0.1.22"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "capnpc"
+version = "0.1.21"
+source = "git+https://github.com/dwrensha/capnpc-rust#281475feacccf8c7f8811d40ec6f1aff02d25f73"
+dependencies = [
+ "capnp 0.1.22 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+

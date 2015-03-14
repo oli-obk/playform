@@ -6,7 +6,7 @@ use std::ops::Add;
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[derive(RustcDecodable, RustcEncodable)]
 /// Unique ID for a loaded entity.
-pub struct EntityId(u32);
+pub struct EntityId(pub u32);
 
 impl Default for EntityId {
   fn default() -> EntityId {

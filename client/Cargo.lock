@@ -2,6 +2,7 @@
 name = "playform-client"
 version = "0.0.0"
 dependencies = [
+ "capnp 0.1.22 (registry+https://github.com/rust-lang/crates.io-index)",
  "cgmath 0.0.8 (git+https://github.com/bfops/cgmath-rs)",
  "env_logger 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "gl 0.0.9 (git+https://github.com/bjz/gl-rs)",
@@ -22,6 +23,19 @@ version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "capnp"
+version = "0.1.22"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "capnpc"
+version = "0.1.21"
+source = "git+https://github.com/dwrensha/capnpc-rust#281475feacccf8c7f8811d40ec6f1aff02d25f73"
+dependencies = [
+ "capnp 0.1.22 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "cgmath"
 version = "0.0.8"
 source = "git+https://github.com/bfops/cgmath-rs#50b76ebb6679204d30c70c665077cebe80b60caa"
@@ -29,6 +43,14 @@ dependencies = [
  "rand 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_macros 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "communicate_capnp"
+version = "0.0.0"
+dependencies = [
+ "capnp 0.1.22 (registry+https://github.com/rust-lang/crates.io-index)",
+ "capnpc 0.1.21 (git+https://github.com/dwrensha/capnpc-rust)",
 ]
 
 [[package]]
@@ -107,10 +129,10 @@ name = "playform-common"
 version = "0.0.0"
 dependencies = [
  "cgmath 0.0.8 (git+https://github.com/bfops/cgmath-rs)",
+ "communicate_capnp 0.0.0",
  "log 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "nanomsg 0.3.1 (git+https://github.com/thehydroimpulse/nanomsg.rs)",
  "rustc-serialize 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "serialize 0.0.0",
  "time 0.1.19 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -156,10 +178,6 @@ source = "git+https://github.com/bfops/rust-sdl2#ea9d40e80d45378dd3e64c3bd94e0de
 dependencies = [
  "libc 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
-
-[[package]]
-name = "serialize"
-version = "0.0.0"
 
 [[package]]
 name = "time"

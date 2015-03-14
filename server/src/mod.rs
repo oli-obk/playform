@@ -11,6 +11,9 @@
 #![feature(unboxed_closures)]
 #![feature(unsafe_destructor)]
 
+extern crate capnp;
+#[macro_use]
+extern crate "capnpc-macros" as capnpc_macros;
 extern crate cgmath;
 extern crate common;
 extern crate env_logger;

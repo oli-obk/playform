@@ -2,6 +2,8 @@
 name = "playform-server"
 version = "0.0.0"
 dependencies = [
+ "capnp 0.1.22 (registry+https://github.com/rust-lang/crates.io-index)",
+ "capnpc-macros 0.0.0 (git+https://github.com/bfops/capnpc-macros)",
  "cgmath 0.0.8 (git+https://github.com/bfops/cgmath-rs)",
  "env_logger 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -15,6 +17,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "capnp"
+version = "0.1.22"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "capnpc"
+version = "0.1.21"
+source = "git+https://github.com/dwrensha/capnpc-rust#281475feacccf8c7f8811d40ec6f1aff02d25f73"
+dependencies = [
+ "capnp 0.1.22 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "capnpc-macros"
+version = "0.0.0"
+source = "git+https://github.com/bfops/capnpc-macros#96ec92cc8bdc4a66c4dd3f9605d6dc51c1c0bba5"
+dependencies = [
+ "capnp 0.1.22 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "cgmath"
 version = "0.0.8"
 source = "git+https://github.com/bfops/cgmath-rs#50b76ebb6679204d30c70c665077cebe80b60caa"
@@ -22,6 +45,14 @@ dependencies = [
  "rand 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_macros 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "communicate_capnp"
+version = "0.0.0"
+dependencies = [
+ "capnp 0.1.22 (registry+https://github.com/rust-lang/crates.io-index)",
+ "capnpc 0.1.21 (git+https://github.com/dwrensha/capnpc-rust)",
 ]
 
 [[package]]
@@ -82,10 +113,10 @@ name = "playform-common"
 version = "0.0.0"
 dependencies = [
  "cgmath 0.0.8 (git+https://github.com/bfops/cgmath-rs)",
+ "communicate_capnp 0.0.0",
  "log 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "nanomsg 0.3.1 (git+https://github.com/thehydroimpulse/nanomsg.rs)",
  "rustc-serialize 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "serialize 0.0.0",
  "time 0.1.19 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -121,10 +152,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "rustc-serialize"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
-name = "serialize"
-version = "0.0.0"
 
 [[package]]
 name = "time"

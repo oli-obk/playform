@@ -1,5 +1,8 @@
-use cgmath::{Aabb, Point3, Vector3, Point};
+use cgmath::{Aabb, Point3, Vector3, Point, Vector};
 
+use block_position;
+use lod;
+use terrain_mesh;
 use voxel;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -42,6 +45,41 @@ impl T {
       make_bounds(self.low_corner.add_v(&v1).add_v(&v2)),
       make_bounds(self.low_corner.add_v(&v2)),
     ]
+  }
+
+  /// Find the LOD that this edge should be loaded at, and return the edge(s) that represent the same space at that LOD.
+  pub fn correct_lod(&self, player_position: &block_position::T) -> Vec<T> {
+    let lod: lod::T =
+      self.neighbors().iter()
+      .map(|bounds| block_position::containing(&bounds).desired_lod(player_position))
+      .min()
+      .unwrap();
+    let lg_size = terrain_mesh::LG_SAMPLE_SIZE[lod.0 as usize];
+
+    let mut cpy = self.clone();
+    cpy.lg_size = lg_size;
+
+    if lg_size > self.lg_size {
+      let lg_ratio = lg_size - self.lg_size;
+      cpy.low_corner.x = cpy.low_corner.x >> lg_ratio;
+      cpy.low_corner.y = cpy.low_corner.y >> lg_ratio;
+      cpy.low_corner.z = cpy.low_corner.z >> lg_ratio;
+      vec!(cpy)
+    } else if lg_size < self.lg_size {
+      let lg_ratio = self.lg_size - lg_size;
+      cpy.low_corner.x = cpy.low_corner.x << lg_ratio;
+      cpy.low_corner.y = cpy.low_corner.y << lg_ratio;
+      cpy.low_corner.z = cpy.low_corner.z << lg_ratio;
+
+      (0 .. (1 << lg_ratio)).map(|i| {
+        let mut cpy = cpy.clone();
+        cpy.low_corner.add_self_v(&self.direction.to_vec().mul_s(i));
+        cpy
+      })
+      .collect()
+    } else {
+      vec!(cpy)
+    }
   }
 }
 

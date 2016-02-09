@@ -3,7 +3,11 @@
 use cgmath::{Point3, Vector3, Point};
 use std::ops::Add;
 
+use common::surroundings_loader;
+use common::voxel;
+
 use edge;
+use load_terrain;
 use lod;
 use terrain_mesh;
 
@@ -110,6 +114,11 @@ impl T {
       direction: edge::Direction::X,
     }
   }
+
+  pub fn desired_lod(&self, player_position: &T) -> lod::T {
+    let distance = surroundings_loader::distance_between(player_position.as_pnt(), &self.as_pnt());
+    load_terrain::lod_index(distance)
+  }
 }
 
 #[allow(missing_docs)]
@@ -117,7 +126,7 @@ pub fn of_pnt(p: &Point3<i32>) -> T {
   T(p.clone())
 }
 
-#[allow(missing_docs)]
+/// Find the block_position containing the given point.
 pub fn of_world_position(world_position: &Point3<f32>) -> T {
   fn convert_coordinate(x: f32) -> i32 {
     let x = x.floor() as i32;
@@ -135,6 +144,19 @@ pub fn of_world_position(world_position: &Point3<f32>) -> T {
       convert_coordinate(world_position.x),
       convert_coordinate(world_position.y),
       convert_coordinate(world_position.z),
+    )
+  )
+}
+
+/// Find the chunk that contains the given voxel
+pub fn containing(voxel: &voxel::bounds::T) -> T {
+  assert!(voxel.lg_size <= terrain_mesh::LG_WIDTH);
+  let lg_ratio = terrain_mesh::LG_WIDTH - voxel.lg_size;
+  of_pnt(
+    &Point3::new(
+      voxel.x >> lg_ratio,
+      voxel.y >> lg_ratio,
+      voxel.z >> lg_ratio,
     )
   )
 }

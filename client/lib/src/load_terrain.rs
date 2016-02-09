@@ -3,6 +3,7 @@ use num;
 
 use common::voxel;
 
+use block_position;
 use client;
 use edge;
 use lod;
@@ -44,20 +45,31 @@ pub fn load_voxel<Edge>(
     }
   }
 
-  trace!("voxel bounds {:?}", bounds);
+  trace!("load_voxel {:?}", bounds);
+
+  let player_position =
+    block_position::of_world_position(&client.player_position.lock().unwrap().clone());
 
   for direction in &[edge::Direction::X, edge::Direction::Y, edge::Direction::Z] {
     let p0 = Point3::new(bounds.x, bounds.y, bounds.z);
     let (v1, v2) = direction.perpendicular();
     let (v1, v2) = (v1.to_vec(), v2.to_vec());
     for p in &[p0, p0.add_v(&-direction.to_vec()), p0.add_v(&v1), p0.add_v(&v1).add_v(&v2), p0.add_v(&v2)] {
-      touch_edge(
+      let edge =
         edge::T {
           low_corner: *p,
           direction: *direction,
           lg_size: bounds.lg_size,
+        };
+      trace!("input edge: {:?}", edge);
+      let input_edge = edge.clone();
+      for edge in edge.correct_lod(&player_position).into_iter() {
+        if edge != input_edge {
+          trace!("edge has been changed");
         }
-      );
+        trace!("output edge: {:?}", edge);
+        touch_edge(edge);
+      }
     }
   }
 }
@@ -72,7 +84,8 @@ pub fn load_edge<UpdateView>(
 {
   debug!("generate {:?}", edge);
   let voxels = client.voxels.lock().unwrap();
-  let mesh_fragment = try!(terrain_mesh::generate(&voxels, edge, &client.id_allocator));
+  let player_position = block_position::of_world_position(&client.player_position.lock().unwrap());
+  let mesh_fragment = try!(terrain_mesh::generate(&voxels, edge, &client.id_allocator, &player_position));
 
   let mut updates = Vec::new();
 

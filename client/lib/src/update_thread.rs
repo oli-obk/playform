@@ -95,7 +95,7 @@ fn update_surroundings<UpdateView, UpdateServer>(
       );
     let new_lod = lod_index(distance);
     let mut requested_voxels = voxel::bounds::set::new();
-    for edge in block_position.edges(new_lod) {
+    for edge in block_position.edges(new_lod).flat_map(|edge| edge.correct_lod(&player_position)) {
       match load_type {
         LoadType::Load => {
           stopwatch::time("update_thread.load_edge", || {
@@ -162,6 +162,7 @@ fn load_or_request_edge<RequestVoxel, UpdateView>(
   RequestVoxel: FnMut(voxel::bounds::T),
   UpdateView: FnMut(view_update::T),
 {
+  trace!("Loading edge {:?}", edge);
   match
     load_terrain::load_edge(
       client,
@@ -171,7 +172,10 @@ fn load_or_request_edge<RequestVoxel, UpdateView>(
   {
     Ok(()) => {},
     Err(()) => {
+      let player_position = block_position::of_world_position(&client.player_position.lock().unwrap());
       let mut voxel_coords = Vec::new();
+      voxel_coords.extend(edge.neighbors().iter().cloned());
+
       let low_corner = edge.low_corner.add_v(&edge.direction.to_vec());
       voxel_coords.push(
         voxel::bounds::T {
@@ -179,11 +183,14 @@ fn load_or_request_edge<RequestVoxel, UpdateView>(
           y: low_corner.y,
           z: low_corner.z,
           lg_size: edge.lg_size,
-        },
+        }
       );
-      voxel_coords.extend(edge.neighbors().iter().cloned());
 
-      for voxel in voxel_coords {
+      let requests =
+        voxel_coords
+        .into_iter()
+        .flat_map(|voxel| voxel::bounds::correct_lod(&voxel, &player_position));
+      for voxel in requests {
         request_voxel(voxel);
       }
     }
@@ -213,6 +220,7 @@ fn process_voxel_updates<RecvVoxelUpdates, UpdateView>(
     }
 
     for edge in update_edges.into_iter() {
+      trace!("voxel-triggered edge loading {:?}", edge);
       let _ =
         load_terrain::load_edge(
           client,

@@ -53,9 +53,9 @@ mod terrain_buffers;
 mod terrain_mesh;
 mod update_thread;
 mod vertex;
-mod voxel;
 mod view;
 mod view_thread;
 mod view_update;
+mod voxel;
 
 pub use run::run;

@@ -11,6 +11,7 @@ use common::id_allocator;
 use common::voxel;
 // TODO: Move the server-only parts to the server, like BLOCK_WIDTH and sample_info.
 
+use block_position;
 use edge;
 
 // TODO: terrain_mesh is now chunk-agnostic. Some/all of these values should be moved.
@@ -86,10 +87,12 @@ fn make_bounds(
 mod voxel_storage {
   use isosurface_extraction::dual_contouring;
 
-  use common::voxel;
+  use block_position;
+  use voxel;
 
   pub struct T<'a> {
     pub voxels: &'a voxel::tree::T,
+    pub player_position: block_position::T,
   }
 
   fn get_voxel<'a>(this: &mut T<'a>, bounds: &voxel::bounds::T) -> Option<&'a voxel::T> {
@@ -107,13 +110,22 @@ mod voxel_storage {
     }
 
     fn get_voxel_data(&mut self, bounds: &voxel::bounds::T) -> Option<dual_contouring::voxel_storage::VoxelData> {
-      match get_voxel(self, bounds) {
+      trace!("get_voxel_data: {:?}", bounds);
+      let bounds = {
+        let bounds = voxel::bounds::correct_lod(&bounds, &self.player_position);
+        if bounds.len() != 1 {
+          panic!("corrected bounds: {:?}", bounds);
+        }
+        bounds.into_iter().next().unwrap()
+      };
+
+      match get_voxel(self, &bounds) {
         None => None,
         Some(&voxel::Volume(_)) => panic!("Can't extract voxel data from a volume"),
         Some(&voxel::Surface(ref voxel)) =>
           Some({
             dual_contouring::voxel_storage::VoxelData {
-              bounds: bounds.clone(),
+              bounds: bounds,
               vertex: voxel.surface_vertex.to_world_vertex(&bounds),
               normal: voxel.normal.to_float_normal(),
             }
@@ -127,6 +139,7 @@ pub fn generate(
   voxels: &voxel::tree::T,
   edge: &edge::T,
   id_allocator: &Mutex<id_allocator::T<entity_id::T>>,
+  player_position: &block_position::T,
 ) -> Result<T, ()>
 {
   stopwatch::time("terrain_mesh::generate", || {
@@ -134,28 +147,13 @@ pub fn generate(
     {
       let block2 = Arc::make_mut(&mut block);
 
-      let low = edge.low_corner;
-      let high = low.add_v(&Vector3::new(1, 1, 1));
-      let low =
-        Point3::new(
-          low.x << edge.lg_size,
-          low.y << edge.lg_size,
-          low.z << edge.lg_size,
-        );
-      let high =
-        Point3::new(
-          high.x << edge.lg_size,
-          high.y << edge.lg_size,
-          high.z << edge.lg_size,
-        );
-
-      trace!("low {:?}", low);
-      trace!("high {:?}", high);
-
-      trace!("edge: {:?} {:?}", edge.direction, low);
+      trace!("edge: {:?}", edge);
 
       try!(dual_contouring::edge::extract(
-        &mut voxel_storage::T { voxels: voxels },
+        &mut voxel_storage::T {
+          voxels: voxels,
+          player_position: *player_position,
+        },
         &dual_contouring::edge::T {
           low_corner: edge.low_corner,
           lg_size: edge.lg_size,

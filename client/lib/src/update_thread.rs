@@ -112,7 +112,16 @@ fn update_surroundings<UpdateView, UpdateServer>(
         },
         LoadType::Update => {
           stopwatch::time("update_thread.update_block", || {
-            // TODO: In this case, if new_lod < current_lod, unload the edge pre-emptively.
+            // Reload any edges that are at too high a LOD.
+            let collisions = client.loaded_edges.lock().unwrap().find_collisions(&edge);
+            for collision in &collisions {
+              if collision.lg_size < edge.lg_size {
+                let mut request_voxel = |voxel| {
+                  requested_voxels.insert(voxel);
+                };
+                load_or_request_edge(client, &mut request_voxel, update_view, &edge);
+              }
+            }
           })
         },
         LoadType::Unload => {

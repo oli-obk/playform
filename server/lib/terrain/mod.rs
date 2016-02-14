@@ -70,7 +70,7 @@ impl T {
         f(&voxel);
         *branch =
           voxel_data::tree::Branch {
-            data: Some(voxel.clone()),
+            data: Some(voxel),
             branches: Box::new(voxel_data::tree::Branches::empty()),
           };
       },

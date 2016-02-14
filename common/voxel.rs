@@ -30,6 +30,10 @@ pub mod tree {
   pub type T = voxel_data::tree::T<super::T>;
   pub type TreeBody = voxel_data::tree::TreeBody<super::T>;
   pub type Branches = voxel_data::tree::Branches<super::T>;
+
+  pub fn new() -> T {
+    voxel_data::tree::new()
+  }
 }
 
 impl isosurface_extraction::dual_contouring::material::T for Material {

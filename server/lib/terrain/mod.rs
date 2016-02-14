@@ -49,7 +49,7 @@ impl T {
   pub fn new(terrain_seed: Seed) -> T {
     T {
       mosaic: Box::new(biome::hills::new(terrain_seed)),
-      voxels: Mutex::new(voxel::tree::T::new()),
+      voxels: Mutex::new(voxel::tree::new()),
     }
   }
 

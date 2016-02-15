@@ -26,9 +26,8 @@ pub enum Material {
 pub mod tree {
   use voxel_data;
 
-  pub use voxel_data::tree::TreeBody::*;
   pub type T = voxel_data::tree::T<super::T>;
-  pub type TreeBody = voxel_data::tree::TreeBody<super::T>;
+  pub type Inner = voxel_data::tree::Inner<super::T>;
   pub type Branches = voxel_data::tree::Branches<super::T>;
 
   pub fn new() -> T {

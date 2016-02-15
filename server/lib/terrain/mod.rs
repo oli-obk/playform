@@ -63,28 +63,16 @@ impl T {
     F: FnMut(&voxel::T)
   {
     let mut voxels = self.voxels.lock().unwrap();
-    let branch = voxels.get_mut_or_create(bounds);
-    match branch {
-      &mut voxel_data::tree::Empty => {
+    let branches = voxels.get_mut_or_create(bounds);
+    let branches = branches.force_branches();
+    match branches.data {
+      None => {
         let voxel = voxel::unwrap(voxel::of_field(&self.mosaic, bounds));
         f(&voxel);
-        *branch =
-          voxel_data::tree::Branch {
-            data: Some(voxel),
-            branches: Box::new(voxel_data::tree::Branches::empty()),
-          };
+        branches.data = Some(voxel);
       },
-      &mut voxel_data::tree::Branch { ref mut data, branches: _ }  => {
-        match data {
-          &mut None => {
-            let voxel = voxel::unwrap(voxel::of_field(&self.mosaic, bounds));
-            f(&voxel);
-            *data = Some(voxel);
-          },
-          &mut Some(ref data) => {
-            f(data);
-          },
-        }
+      Some(ref data) => {
+        f(data);
       },
     }
   }

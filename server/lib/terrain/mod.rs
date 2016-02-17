@@ -40,7 +40,7 @@ use common::voxel;
 /// This struct contains and lazily generates the world's terrain.
 #[allow(missing_docs)]
 pub struct T {
-  pub mosaic: Box<voxel_data::mosaic::T<voxel::Material> + Sync>,
+  pub mosaic: Box<voxel::mosaic::T<voxel::Material> + Sync>,
   pub voxels: Mutex<voxel::tree::T>,
 }
 
@@ -80,11 +80,11 @@ impl T {
   /// Apply a voxel brush to the terrain.
   pub fn brush<VoxelChanged, Mosaic>(
     &self,
-    brush: &voxel_data::brush::T<Mosaic>,
+    brush: &voxel::brush::T<Mosaic>,
     mut voxel_changed: VoxelChanged,
   ) where
     VoxelChanged: FnMut(&voxel::T, &voxel::bounds::T),
-    Mosaic: voxel_data::mosaic::T<voxel::Material>,
+    Mosaic: voxel::mosaic::T<voxel::Material>,
   {
     let mut voxels = self.voxels.lock().unwrap();
     voxels.brush(

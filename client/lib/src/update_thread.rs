@@ -118,14 +118,10 @@ fn update_surroundings<UpdateView, UpdateServer>(
       LoadType::Update => {
         for edge in block_position.edges(new_lod) {
           stopwatch::time("update_thread.update_block", || {
-            // Reload any edges that are at too high a LOD.
-            let collisions = client.loaded_edges.lock().unwrap().find_collisions(&edge);
-            if collisions.iter().any(|collision| collision.lg_size < edge.lg_size) {
-              let mut request_voxel = |voxel| {
-                requested_voxels.insert(voxel);
-              };
-              load_or_request_edge(client, &mut request_voxel, update_view, &edge);
-            }
+            let mut request_voxel = |voxel| {
+              requested_voxels.insert(voxel);
+            };
+            load_or_request_edge(client, &mut request_voxel, update_view, &edge);
           })
         }
       },
@@ -177,6 +173,7 @@ fn load_or_request_edge<RequestVoxel, UpdateView>(
   RequestVoxel: FnMut(voxel::bounds::T),
   UpdateView: FnMut(view_update::T),
 {
+  trace!("load_or_request_edge");
   match
     load_terrain::load_edge(
       client,

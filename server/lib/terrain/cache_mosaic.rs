@@ -3,7 +3,7 @@ use std;
 
 use common::voxel;
 
-#[derive(PartialEq)]
+#[derive(PartialEq, RustcEncodable, RustcDecodable)]
 struct Key(cgmath::Point3<f32>);
 
 impl Eq for Key {}

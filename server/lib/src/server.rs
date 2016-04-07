@@ -16,6 +16,7 @@ use mob;
 use physics::Physics;
 use player;
 use sun::Sun;
+use terrain;
 use terrain_loader;
 
 const UPDATES_PER_SECOND: u64 = 30;
@@ -56,8 +57,8 @@ pub struct T {
   pub update_timer: Mutex<IntervalTimer>,
 }
 
-#[allow(missing_docs)]
-pub fn new() -> T {
+/// Construct a Server with a specific terrain struct.
+pub fn with_terrain(terrain: Option<terrain::T>) -> T {
   let world_width: u32 = 1 << 11;
   let world_width = world_width as f32;
   let physics =
@@ -80,7 +81,7 @@ pub fn new() -> T {
     client_allocator: Mutex::new(id_allocator::new()),
 
     physics: Mutex::new(physics),
-    terrain_loader: terrain_loader::T::new(),
+    terrain_loader: terrain_loader::T::with_terrain(terrain),
     rng: {
       let seed = [0];
       let seed: &[usize] = &seed;
@@ -101,4 +102,9 @@ pub fn new() -> T {
 
   init_mobs(&server);
   server
+}
+
+#[allow(missing_docs)]
+pub fn new() -> T {
+  with_terrain(None)
 }

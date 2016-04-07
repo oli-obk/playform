@@ -23,7 +23,17 @@ pub fn run(listen_url: &str, quit_signal: &Mutex<bool>) {
   let listen_socket = ReceiveSocket::new(listen_url.as_ref(), None);
   let listen_socket = Mutex::new(listen_socket);
 
-  let server = server::new();
+  let terrain_path = std::path::Path::new("terrain.dat");
+
+  let server = || {
+    if let Ok(mut terrain_file) = std::fs::File::open(terrain_path) {
+      if let Ok(terrain) = bincode::rustc_serialize::decode_from(&mut terrain_file, bincode::SizeLimit::Bounded(1 << 32)) {
+        return server::with_terrain(Some(terrain))
+      }
+    }
+    server::new()
+  };
+  let server = server();
   let server = &server;
 
   let mut threads = Vec::new();
@@ -75,6 +85,15 @@ pub fn run(listen_url: &str, quit_signal: &Mutex<bool>) {
   for thread in threads.into_iter() {
     let stopwatch = thread.join();
     stopwatch.print();
+  }
+
+  {
+    let mut terrain_file = std::fs::File::create(terrain_path).unwrap();
+    bincode::rustc_serialize::encode_into(
+      &server.terrain_loader.terrain,
+      &mut terrain_file,
+      bincode::SizeLimit::Bounded(1 << 32)
+    ).unwrap();
   }
 
   stopwatch::clone().print();

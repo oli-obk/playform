@@ -16,6 +16,7 @@
 #![plugin(clippy)]
 #![allow(type_complexity)]
 
+extern crate bincode;
 extern crate cgmath;
 extern crate isosurface_extraction;
 #[macro_use]
@@ -28,6 +29,7 @@ extern crate test;
 extern crate time;
 extern crate voxel_data;
 
+pub mod bin_encode;
 pub mod closure_series;
 pub mod color;
 pub mod cube_shell;
@@ -39,3 +41,5 @@ pub mod range_abs;
 pub mod socket;
 pub mod surroundings_loader;
 pub mod voxel;
+
+pub use self::bin_encode::BinEncode;

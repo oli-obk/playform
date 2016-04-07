@@ -9,6 +9,7 @@ name = "terrain"
 path = "mod.rs"
 
 [dependencies]
+bincode = "*"
 cgmath = "0.3.*"
 clippy = "*"
 log = "*"
@@ -16,6 +17,7 @@ rand = "*"
 time = "*"
 noise = "0.1.5"
 num = "*"
+rustc-serialize = "*"
 
 [dependencies.playform-common]
 path = "../../../common"

@@ -28,9 +28,10 @@ pub struct T {
 }
 
 impl T {
-  pub fn new() -> T {
+  pub fn with_terrain(terrain: Option<terrain::T>) -> T {
+    let terrain = terrain.unwrap_or_else(|| terrain::T::new(terrain::Seed::new(0)));
     T {
-      terrain: terrain::T::new(terrain::Seed::new(0)),
+      terrain: terrain,
       in_progress_terrain: Mutex::new(in_progress_terrain::T::new()),
       lod_map: Mutex::new(lod::Map::new()),
       loaded: Mutex::new(HashMap::new()),
